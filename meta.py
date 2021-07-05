@@ -114,7 +114,7 @@ class Meta(nn.Module):
 
                 qry_logits = fnet(x_qry)[0].detach()
                 qry_acc = (qry_logits.argmax(dim=1) ==
-                           y_qry).sum().cpu()/y_qry.size(0)
+                           y_qry).sum().item()/y_qry.size(0)
                 matrix = confusion_matrix(
                     y_qry.cpu(), qry_logits.cpu().argmax(dim=1))
                 qry_accs.append(qry_acc)
