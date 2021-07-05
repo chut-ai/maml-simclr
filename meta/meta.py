@@ -1,11 +1,14 @@
 """Module containing meta train & meta test methods."""
 
 import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
+import torch
 import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
 import higher
+from meta.simclr import simclr
 
 
 class Meta(nn.Module):
@@ -43,40 +46,36 @@ class Meta(nn.Module):
         inner_opt = optim.Adam(self.net.parameters(), lr=inner_lr)
 
         qry_accs = []
-        qry_rot_accs = []
+        simclr_losses = []
 
         for task in task_batch:
-            x_spt, x_qry, y_spt, y_qry, z_spt, z_qry = task
-            x_spt, y_spt, z_spt = x_spt.cuda(), y_spt.cuda(), z_spt.cuda()
-            x_qry, y_qry, z_qry = x_qry.cuda(), y_qry.cuda(), z_qry.cuda()
+            x_spt, x_qry, y_spt, y_qry = task
+            x_spt, y_spt = x_spt.cuda(), y_spt.cuda()
+            x_qry, y_qry = x_qry.cuda(), y_qry.cuda()
 
             with higher.innerloop_ctx(self.net, inner_opt, copy_initial_weights=False) as (fnet, diffopt):
                 for _ in range(n_inner_loop):
-                    spt_logits, spt_super = fnet(x_spt)
+                    spt_logits, _ = fnet(x_spt)
                     clsf_loss = F.cross_entropy(spt_logits, y_spt)
-                    super_loss = F.cross_entropy(spt_super, z_spt)
-                    spt_loss = clsf_loss + self.lamb*super_loss
+                    spt_loss = clsf_loss
                     diffopt.step(spt_loss)
 
-                qry_logits, qry_super = fnet(x_qry)
+                qry_logits, _ = fnet(x_qry)
+                simclr_loss = simclr(x_qry, fnet)
                 clsf_loss = F.cross_entropy(qry_logits, y_qry)
-                super_loss = F.cross_entropy(qry_super, z_qry)
-                qry_loss = clsf_loss + self.lamb*super_loss
+                qry_loss = clsf_loss + self.lamb*simclr_loss
                 qry_loss.backward()
 
-                qry_logits, qry_super = fnet(x_qry)
+                qry_logits, _ = fnet(x_qry)
                 qry_logits = qry_logits.detach()
-                qry_super = qry_super.detach()
                 qry_acc = (qry_logits.argmax(dim=1) ==
                            y_qry).sum().item()/y_qry.size(0)
-                qry_rot_acc = (qry_super.argmax(dim=1) ==
-                               z_qry).sum().item()/y_qry.size(0)
                 qry_accs.append(qry_acc)
-                qry_rot_accs.append(qry_rot_acc)
+                simclr_losses.append(simclr_loss.item())
 
         mean_qry_acc = np.average(qry_accs)
-        mean_qry_rot_acc = np.average(qry_rot_accs)
-        return mean_qry_acc, mean_qry_rot_acc
+        mean_simclr_loss = np.average(simclr_losses)
+        return mean_qry_acc, mean_simclr_loss
 
     def test(self, task_batch, inner_lr, n_inner_loop, return_matrix=False):
         """Meta test meta model. The meta model solves every tasks in
@@ -100,16 +99,15 @@ class Meta(nn.Module):
         matrices = []
 
         for task in task_batch:
-            x_spt, x_qry, y_spt, y_qry, z_spt, z_qry = task
-            x_spt, y_spt, z_spt = x_spt.cuda(), y_spt.cuda(), z_spt.cuda()
-            x_qry, y_qry, z_qry = x_qry.cuda(), y_qry.cuda(), z_qry.cuda()
+            x_spt, x_qry, y_spt, y_qry = task
+            x_spt, y_spt = x_spt.cuda(), y_spt.cuda() 
+            x_qry, y_qry = x_qry.cuda(), y_qry.cuda()
 
             with higher.innerloop_ctx(self.net, inner_opt, track_higher_grads=False) as (fnet, diffopt):
                 for _ in range(n_inner_loop):
                     spt_logits, spt_super = fnet(x_spt)
                     clsf_loss = F.cross_entropy(spt_logits, y_spt)
-                    super_loss = F.cross_entropy(spt_super, z_spt)
-                    spt_loss = clsf_loss + self.lamb*super_loss
+                    spt_loss = clsf_loss
                     diffopt.step(spt_loss)
 
                 qry_logits = fnet(x_qry)[0].detach()

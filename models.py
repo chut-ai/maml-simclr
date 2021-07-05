@@ -23,7 +23,7 @@ class DenseNet(nn.Module):
             nn.ReLU()
         )
         self.classif = nn.Linear(256, 3)
-        self.supervision = nn.Linear(256, 4)
+        self.supervision = nn.Linear(256, 32)
 
 
     def forward(self, x):

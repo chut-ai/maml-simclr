@@ -68,29 +68,25 @@ class SafranTask:
             random.shuffle(indexes)
             for spt_index in indexes[:self.n_spt]:
                 spt_instance = self.transform(cls_instances[spt_index])
-                spt_data.append([spt_instance, cls, 0])
+                spt_data.append([spt_instance, cls])
             for qry_index in indexes[self.n_spt:]:
                 qry_instance = self.transform(cls_instances[qry_index])
-                qry_data.append([qry_instance, cls, 0])
+                qry_data.append([qry_instance, cls])
         random.shuffle(spt_data)
         random.shuffle(qry_data)
 
         instances_spt = [elem[0] for elem in spt_data]
         labels_spt = squeeze([elem[1] for elem in spt_data])
-        rot_spt = [elem[2] for elem in spt_data]
 
         instances_qry = [elem[0] for elem in qry_data]
         labels_qry = squeeze([elem[1] for elem in qry_data])
-        rot_qry = [elem[2] for elem in qry_data]
 
         x_spt = torch.stack(instances_spt, 0)
         x_qry = torch.stack(instances_qry, 0)
         y_spt = torch.Tensor(labels_spt).type(torch.int64)
         y_qry = torch.Tensor(labels_qry).type(torch.int64)
-        z_spt = torch.Tensor(rot_spt).type(torch.int64)
-        z_qry = torch.Tensor(rot_qry).type(torch.int64)
 
-        return x_spt, x_qry, y_spt, y_qry, z_spt, z_qry
+        return x_spt, x_qry, y_spt, y_qry
 
     def task_batch(self, task_bsize):
         """Create a batch of tasks.

@@ -57,7 +57,7 @@ def preprocess(path, transform, p1, p2, n_max):
         raw_img_path = os.path.join(
             path, "coco_raw/val2014/COCO_val2014_{}.jpg".format(raw_img))
 
-        new_img_folder = os.path.join(path, "coco_preprocessed", img_cls)
+        new_img_folder = os.path.join(path, "CocoCrop", img_cls)
 
         if not os.path.exists(new_img_folder):
             os.makedirs(new_img_folder)
@@ -88,12 +88,7 @@ def preprocess(path, transform, p1, p2, n_max):
 
 transform = transforms.Compose([
     transforms.ColorJitter([.60, 1.], [1., 3.]),
-    transforms.GaussianBlur(5, sigma=(1, 3)),
     transforms.Grayscale(),
-    transforms.RandomResizedCrop(170, (1, 1), (1, 1)),
-    transforms.RandomVerticalFlip(p=0.5),
-    transforms.RandomHorizontalFlip(p=0.5),
-    transforms.RandomRotation([0, 360]),
 ])
 
 p1 = 0.002

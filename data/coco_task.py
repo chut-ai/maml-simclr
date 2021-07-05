@@ -19,14 +19,14 @@ class CocoTask:
         Args:
             n_qry (int) : number of query images for meta optimization.
             n_spt (int) : number of support images for inner optimization.
-            root (str) : path to coco_preprocessed folder.
+            root (str) : path to CocoCrop folder.
             n_train_class (str) : number of train classes.
             train_class (list) : list of train classes.
         """
 
         self.n_qry = n_qry
         self.n_spt = n_spt
-        data_root = os.path.join(root, "coco_preprocessed")
+        data_root = os.path.join(root, "CocoCrop")
         self.classes = range(80)
         relation_dict = int_to_class(data_root)
 
@@ -56,19 +56,25 @@ class CocoTask:
         self.test_class = [
             x for x in self.classes if x not in self.train_class]
 
-    def task(self, task_classes):
+    def task(self, mode):
         """Create a single task. A task is a 3-way classification problem
         composed of n_spt training images per class and n_qry test images per
         class. Task classes can be meta train classes or meta test classes.
 
         Args:
-            task_classes (list) : classes to use to make task. Can be
-                                  self.test_classes or self.train_classes.
+            mode (str) : classes to use to make task. Can be 'train' or 'test'.
         Returns:
             (list) : - x_spt, x_qry : train and test images.
                      - y_spt, y_qry : train and test labels).
                      - z_spt, z_qry : train and test rotation label.
         """
+
+        if mode == "train":
+            task_classes = self.train_class
+        elif mode == "test":
+            task_classes = self.test_class
+        else:
+            raise "WrongModeError"
 
         chosen_classes = np.random.choice(task_classes, 3, False)
 
@@ -80,36 +86,26 @@ class CocoTask:
             indexes = np.random.choice(n_img, self.n_spt+self.n_qry, False)
             random.shuffle(indexes)
             for spt_index in indexes[:self.n_spt]:
-                rot = np.random.randint(0, 4)
-                rotation = transforms.RandomRotation([90*rot, 90*rot])
-                spt_instance = self.transform(
-                    rotation(cls_instances[spt_index]))
-                spt_data.append([spt_instance, cls, rot])
+                spt_instance = self.transform(cls_instances[spt_index])
+                spt_data.append([spt_instance, cls])
             for qry_index in indexes[self.n_spt:]:
-                rot = np.random.randint(0, 4)
-                rotation = transforms.RandomRotation([90*rot, 90*rot])
-                qry_instance = self.transform(
-                    rotation(cls_instances[qry_index]))
-                qry_data.append([qry_instance, cls, rot])
+                qry_instance = self.transform(cls_instances[qry_index])
+                qry_data.append([qry_instance, cls])
         random.shuffle(spt_data)
         random.shuffle(qry_data)
 
         instances_spt = [elem[0] for elem in spt_data]
         labels_spt = squeeze([elem[1] for elem in spt_data])
-        rot_spt = [elem[2] for elem in spt_data]
 
         instances_qry = [elem[0] for elem in qry_data]
         labels_qry = squeeze([elem[1] for elem in qry_data])
-        rot_qry = [elem[2] for elem in qry_data]
 
         x_spt = torch.stack(instances_spt, 0)
         x_qry = torch.stack(instances_qry, 0)
         y_spt = torch.Tensor(labels_spt).type(torch.int64)
         y_qry = torch.Tensor(labels_qry).type(torch.int64)
-        z_spt = torch.Tensor(rot_spt).type(torch.int64)
-        z_qry = torch.Tensor(rot_qry).type(torch.int64)
 
-        return x_spt, x_qry, y_spt, y_qry, z_spt, z_qry
+        return x_spt, x_qry, y_spt, y_qry
 
     def task_batch(self, task_bsize, mode):
         """Create a batch of tasks.
@@ -121,13 +117,6 @@ class CocoTask:
             list of tasks.
         """
 
-        if mode == "train":
-            task_classes = self.train_class
-        elif mode == "test":
-            task_classes = self.test_class
-        else:
-            raise "WrongModeError"
-
-        tasks = [self.task(task_classes) for _ in range(task_bsize)]
+        tasks = [self.task(mode) for _ in range(task_bsize)]
 
         return tasks
