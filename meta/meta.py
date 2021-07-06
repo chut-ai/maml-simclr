@@ -54,16 +54,16 @@ class Meta(nn.Module):
             x_qry, y_qry = x_qry.cuda(), y_qry.cuda()
 
             with higher.innerloop_ctx(self.net, inner_opt, copy_initial_weights=False) as (fnet, diffopt):
+                super_meta_loss = 0
                 for _ in range(n_inner_loop):
                     spt_logits, _ = fnet(x_spt)
+                    super_meta_loss += simclr(x_spt, fnet)/n_inner_loop
                     clsf_loss = F.cross_entropy(spt_logits, y_spt)
-                    spt_loss = clsf_loss
-                    diffopt.step(spt_loss)
+                    diffopt.step(clsf_loss)
 
                 qry_logits, _ = fnet(x_qry)
-                simclr_loss = simclr(x_qry, fnet)
                 clsf_loss = F.cross_entropy(qry_logits, y_qry)
-                qry_loss = clsf_loss + self.lamb*simclr_loss
+                qry_loss = clsf_loss + self.lamb*super_meta_loss
                 qry_loss.backward()
 
                 qry_logits, _ = fnet(x_qry)
@@ -71,7 +71,7 @@ class Meta(nn.Module):
                 qry_acc = (qry_logits.argmax(dim=1) ==
                            y_qry).sum().item()/y_qry.size(0)
                 qry_accs.append(qry_acc)
-                simclr_losses.append(simclr_loss.item())
+                simclr_losses.append(super_meta_loss.item())
 
         mean_qry_acc = np.average(qry_accs)
         mean_simclr_loss = np.average(simclr_losses)
@@ -100,15 +100,14 @@ class Meta(nn.Module):
 
         for task in task_batch:
             x_spt, x_qry, y_spt, y_qry = task
-            x_spt, y_spt = x_spt.cuda(), y_spt.cuda() 
+            x_spt, y_spt = x_spt.cuda(), y_spt.cuda()
             x_qry, y_qry = x_qry.cuda(), y_qry.cuda()
 
             with higher.innerloop_ctx(self.net, inner_opt, track_higher_grads=False) as (fnet, diffopt):
                 for _ in range(n_inner_loop):
-                    spt_logits, spt_super = fnet(x_spt)
+                    spt_logits, _ = fnet(x_spt)
                     clsf_loss = F.cross_entropy(spt_logits, y_spt)
-                    spt_loss = clsf_loss
-                    diffopt.step(spt_loss)
+                    diffopt.step(clsf_loss)
 
                 qry_logits = fnet(x_qry)[0].detach()
                 qry_acc = (qry_logits.argmax(dim=1) ==
