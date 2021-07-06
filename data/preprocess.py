@@ -88,7 +88,8 @@ def preprocess(path, transform, p1, p2, n_max):
 
 transform = transforms.Compose([
     transforms.ColorJitter([.60, 1.], [1., 3.]),
-    transforms.Grayscale(),
+    transforms.GaussianBlur(3, sigma=[.40, .70]),
+    transforms.Grayscale()
 ])
 
 p1 = 0.002

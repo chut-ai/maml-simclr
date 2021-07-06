@@ -28,7 +28,7 @@ inner_lr = 0.001
 n_inner_loop = 10
 
 net = FullNet()
-meta_model = Meta(net, lamb=1)
+meta_model = Meta(net, lamb=1, eps=.5)
 meta_model.cuda()
 meta_lr = 0.001
 
@@ -37,6 +37,7 @@ train_accs = []
 test_accs_safran = []
 test_accs_coco = []
 simclr_losses = []
+simclr_accs = []
 
 max_acc = 0
 
@@ -45,10 +46,11 @@ for i in range(0, n_batch):
     # Train COCO
     meta_opt.zero_grad()
     train_batch = coco.task_batch(task_bsize, "train")
-    train_acc, simclr_loss = meta_model.train(
+    train_acc, simclr_loss, simclr_acc = meta_model.train(
         train_batch, inner_lr, n_inner_loop)
     train_accs.append(train_acc)
     simclr_losses.append(simclr_loss)
+    simclr_accs.append(simclr_acc)
     meta_opt.step()
     del train_batch
 
@@ -73,10 +75,11 @@ for i in range(0, n_batch):
     np.save(os.path.join(xp_path, "test_acc_coco.npy"),
             np.array(test_accs_coco))
     np.save(os.path.join(xp_path, "simclr_losses.npy"), np.array(simclr_losses))
+    np.save(os.path.join(xp_path, "simclr_accs.npy"), np.array(simclr_accs))
     np.save(os.path.join(xp_path, "test_acc_safran.npy"),
             np.array(test_accs_safran))
 
-    message = "Task batch {}/{}, train {:.2f}%, test coco {:.2f}%, simclr loss {:.2f}, test safran {:.2f}%".format(
-        i+1, n_batch, 100*train_acc, 100*test_acc_coco, simclr_loss, 100*test_acc_safran)
+    message = "Task batch {}/{}, train {:.2f}%, test coco {:.2f}%, simclr acc {:.2f}%, test safran {:.2f}%".format(
+        i+1, n_batch, 100*train_acc, 100*test_acc_coco, 100*simclr_acc, 100*test_acc_safran)
 
     print(message)

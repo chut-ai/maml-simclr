@@ -15,7 +15,7 @@ class Meta(nn.Module):
     """Object containing slow weights and methods to meta train and meta test.
     """
 
-    def __init__(self, net, lamb=1):
+    def __init__(self, net, lamb=1, eps=1):
         """
         Initialise meta model.
 
@@ -27,6 +27,7 @@ class Meta(nn.Module):
         super(Meta, self).__init__()
         self.net = net
         self.lamb = lamb
+        self.eps = eps
 
     def train(self, task_batch, inner_lr, n_inner_loop):
         """Meta train meta model. The meta model solves every tasks in
@@ -47,6 +48,7 @@ class Meta(nn.Module):
 
         qry_accs = []
         simclr_losses = []
+        simclr_accs = []
 
         for task in task_batch:
             x_spt, x_qry, y_spt, y_qry = task
@@ -55,9 +57,12 @@ class Meta(nn.Module):
 
             with higher.innerloop_ctx(self.net, inner_opt, copy_initial_weights=False) as (fnet, diffopt):
                 super_meta_loss = 0
+                super_acc = 0
                 for _ in range(n_inner_loop):
                     spt_logits, _ = fnet(x_spt)
-                    super_meta_loss += simclr(x_spt, fnet)/n_inner_loop
+                    super_loss, super_acc = simclr(x_spt, fnet, self.eps)
+                    super_meta_loss += super_loss/n_inner_loop
+                    super_acc += super_acc/n_inner_loop
                     clsf_loss = F.cross_entropy(spt_logits, y_spt)
                     diffopt.step(clsf_loss)
 
@@ -72,10 +77,12 @@ class Meta(nn.Module):
                            y_qry).sum().item()/y_qry.size(0)
                 qry_accs.append(qry_acc)
                 simclr_losses.append(super_meta_loss.item())
+                simclr_accs.append(super_acc)
 
         mean_qry_acc = np.average(qry_accs)
         mean_simclr_loss = np.average(simclr_losses)
-        return mean_qry_acc, mean_simclr_loss
+        mean_simclr_acc = np.average(simclr_accs)
+        return mean_qry_acc, mean_simclr_loss, mean_simclr_acc
 
     def test(self, task_batch, inner_lr, n_inner_loop, return_matrix=False):
         """Meta test meta model. The meta model solves every tasks in

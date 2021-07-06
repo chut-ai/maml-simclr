@@ -79,7 +79,7 @@ def noise():
     return transform
 
 
-def simclr(x, net):
+def simclr(x, net, eps):
     """Performs SimCLR regularization.
 
     Args:
@@ -116,6 +116,9 @@ def simclr(x, net):
     neg_repr = reprs[1]
     aug_repr = reprs[2]
     pos_loss = positive_loss(pos_repr, aug_repr)
-    neg_loss = negative_loss(pos_repr, neg_repr, 1)
+    neg_loss = negative_loss(pos_repr, neg_repr, eps)
     loss = pos_loss + neg_loss
-    return loss
+    pos_acc = 0 if pos_loss > eps else 1
+    neg_acc = 0 if neg_loss > 0 else 1
+    acc = (1/2)*(pos_acc + neg_acc)
+    return loss, acc
