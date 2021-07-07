@@ -1,4 +1,3 @@
-import time
 import os
 import numpy as np
 import torch
@@ -8,7 +7,7 @@ from models import FullNet
 from data.coco_task import CocoTask
 from data.safran_task import SafranTask
 
-xp_name = "simclr-1"
+xp_name = "simclr-2"
 xp_path = os.path.join("./save/", xp_name)
 if not os.path.exists(xp_path):
     os.makedirs(xp_path)
@@ -21,7 +20,10 @@ task_bsize = 20
 n_batch = 50000
 root = "/home/louishemadou/data/maml-data/"
 
-coco = CocoTask(n_qry, n_spt, root, n_train_class)
+train_class = list(np.random.choice(80, 50, replace=False))
+np.save(os.path.join(xp_path, "train_class.npy"), train_class)
+
+coco = CocoTask(n_qry, n_spt, root, train_class=train_class)
 safran = SafranTask(n_qry, n_spt, root)
 
 inner_lr = 0.001

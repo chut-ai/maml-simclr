@@ -15,6 +15,7 @@ def plot_graph(xp_name, w, title):
 
     y_test_safran = np.load(os.path.join(xp_path, "test_acc_safran.npy"))
     y_test_safran = np.convolve(y_test_safran, np.ones(w), "valid")/w
+    print(max(y_test_safran))
 
     y_loss_simclr = np.load(os.path.join(xp_path, "simclr_losses.npy"))
     y_loss_simclr = np.convolve(y_loss_simclr, np.ones(w), "valid")/w
@@ -28,6 +29,7 @@ def plot_graph(xp_name, w, title):
     fig, ax = plt.subplots()
     ax.set_ylabel("Precision")
     ax.set_xlabel("Tasks")
+    ax.grid()
     # ax_loss = ax.twinx()
     # ax_loss.set_ylabel("SimCLR loss")
     # ax_loss.plot(x, y_loss_simclr, color="grey", label="SimCLR loss")
@@ -42,7 +44,7 @@ def plot_graph(xp_name, w, title):
 
 
 title = "MAML 5 shots with SimCLR - meta auto supervision on every state of fast weights"
-w = 1
+w = 20
 xp_name = "simclr-1"
 
 plot_graph(xp_name, w, title)
