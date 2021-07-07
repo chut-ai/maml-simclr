@@ -30,7 +30,7 @@ def preprocess(path, domain, transform, n_max):
             img.save(new_img_path)
 
 
-n_max = 20
+n_max = 2000
 transform = transforms.RandomResizedCrop(224, (1, 1), (1, 1))
 print("real")
 preprocess("/home/louishemadou/data/maml-data/", "real", transform, n_max)
