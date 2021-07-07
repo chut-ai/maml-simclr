@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 from torchvision import transforms
-from utils import squeeze
+from data.utils import squeeze
 
 DEFAULT_PATH = "/home/louishemadou/data/"
 
@@ -113,12 +113,7 @@ class VisdaTask:
 
         return x_spt, x_qry, y_spt, y_qry
 
-    def task_batch(self, task_bsize, mode, source=None, target=None, augment=False):
+    def task_batch(self, task_bsize, mode, source, target):
 
         tasks = [self.task(mode, source, target) for _ in range(task_bsize)]
         return tasks
-
-# visda = VisdaTask(10, 10, 10, ["real", "quickdraw"], "/home/louishemadou/data/maml-data/")
-# task = visda.task("train", "real", "quickdraw")
-# x_spt, x_qry, y_spt, y_qry = task
-# print(x_spt.size())

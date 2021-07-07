@@ -3,38 +3,6 @@
 import os
 
 
-def int_to_class(path):
-    """Returns dict giving class id from class name.
-
-    Args:
-        path (str) : path to database class folders.
-    Returns:
-        class id to class name dictionnary
-    """
-
-    relation_dict = {}
-
-    for i, cls in enumerate(sorted(os.listdir(path))):
-        relation_dict[i] = cls
-    return relation_dict
-
-
-def class_to_int(path):
-    """Returns dict giving class name from class id.
-
-    Args:
-        path (str) : path to database class folders.
-    Returns:
-        class name to class id dictionnary
-    """
-
-    relation_dict = {}
-
-    for i, cls in enumerate(sorted(os.listdir(path))):
-        relation_dict[cls] = i
-
-    return relation_dict
-
 def squeeze(labels):
 
     items = []

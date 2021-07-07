@@ -47,8 +47,8 @@ class Meta(nn.Module):
         inner_opt = optim.Adam(self.net.parameters(), lr=inner_lr)
 
         qry_accs = []
-        simclr_losses = []
-        simclr_accs = []
+        simclr_accs_src = []
+        simclr_accs_tgt = []
 
         for task in task_batch:
             x_spt, x_qry, y_spt, y_qry = task
@@ -57,12 +57,15 @@ class Meta(nn.Module):
 
             with higher.innerloop_ctx(self.net, inner_opt, copy_initial_weights=False) as (fnet, diffopt):
                 super_meta_loss = 0
-                super_acc = 0
+                super_acc_src = 0
+                super_acc_tgt = 0
                 for _ in range(n_inner_loop):
                     spt_logits, _ = fnet(x_spt)
-                    super_loss, super_acc = simclr(x_spt, fnet, self.eps)
-                    super_meta_loss += super_loss/n_inner_loop
-                    super_acc += super_acc/n_inner_loop
+                    super_loss_src, acc_src = simclr(x_spt, fnet, self.eps)
+                    super_loss_tgt, acc_tgt = simclr(x_qry, fnet, self.eps)
+                    super_meta_loss += (1/n_inner_loop)*(super_loss_src+super_loss_tgt)
+                    super_acc_src += acc_src/n_inner_loop
+                    super_acc_tgt += acc_tgt/n_inner_loop
                     clsf_loss = F.cross_entropy(spt_logits, y_spt)
                     diffopt.step(clsf_loss)
 
@@ -76,15 +79,15 @@ class Meta(nn.Module):
                 qry_acc = (qry_logits.argmax(dim=1) ==
                            y_qry).sum().item()/y_qry.size(0)
                 qry_accs.append(qry_acc)
-                simclr_losses.append(super_meta_loss.item())
-                simclr_accs.append(super_acc)
+                simclr_accs_src.append(super_acc_src)
+                simclr_accs_tgt.append(super_acc_tgt)
 
         mean_qry_acc = np.average(qry_accs)
-        mean_simclr_loss = np.average(simclr_losses)
-        mean_simclr_acc = np.average(simclr_accs)
-        return mean_qry_acc, mean_simclr_loss, mean_simclr_acc
+        mean_simclr_acc_src = np.average(simclr_accs_src)
+        mean_simclr_acc_tgt = np.average(simclr_accs_tgt)
+        return mean_qry_acc, mean_simclr_acc_src, mean_simclr_acc_tgt
 
-    def test(self, task_batch, inner_lr, n_inner_loop, return_matrix=False):
+    def test(self, task_batch, inner_lr, n_inner_loop):
         """Meta test meta model. The meta model solves every tasks in
         task_batch.
 
@@ -92,11 +95,9 @@ class Meta(nn.Module):
             task_batch (list) : list of tasks to solve.
             inner_lr (float) : learning rate to use in inner optimization.
             n_inner_loop (float) : number of inner loops.
-            return_matrix (bool) : return average confusion matrix.
         Returns:
             float : average classification accuracy of trained models on query
                     images.
-            (optionnaly) np.array : confusion matrix
         """
         self.net.train()
 
@@ -124,6 +125,4 @@ class Meta(nn.Module):
                 qry_accs.append(qry_acc)
                 matrices.append(matrix)
 
-        if return_matrix:
-            return np.average(qry_accs), np.average(matrices, axis=0)
         return np.average(qry_accs)
