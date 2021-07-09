@@ -35,7 +35,7 @@ def plot_graph(xp_name, w, title):
 
 
 title = "MAML 5 shots with SimCLR - meta auto supervision on every state of fast weights"
-w = 2
+w = 20
 xp_name = "simclr-1"
 
 plot_graph(xp_name, w, title)
