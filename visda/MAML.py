@@ -14,28 +14,28 @@ if not os.path.exists(xp_path):
 
 n_class = 10
 n_train_class = 200
-n_spt = 200
-n_qry = 200
-task_bsize = 20
+n_spt = 10
+n_qry = 20
+task_bsize = 10
 n_batch = 50000
+n_max = 75
 root = "/home/louishemadou/data/maml-data/"
 
-train_class = list(np.random.choice(345, n_train_class, replace=False))
+train_class = list(np.random.choice(range(1, 346), n_train_class, replace=False))
 np.save(os.path.join(xp_path, "train_class.npy"), train_class)
 
 source = "real"
 target = "quickdraw"
 
-domains = ["real", "quickdraw"]
+domains = [source, target]
 
-visda = VisdaTask(n_class, n_qry, n_spt, domains, root, train_class=train_class)
+visda = VisdaTask(n_class, n_qry, n_spt, domains, n_max, root, train_class=train_class)
 
 inner_lr = 0.001
-n_inner_loop = 10
+n_inner_loop = 5
 
-net = FullNet()
-meta_model = Meta(net, lamb=1, eps=.5)
-meta_model.cuda()
+net = FullNet(n_class)
+meta_model = Meta(net, lamb=1, eps=.5).cuda()
 meta_lr = 0.001
 
 meta_opt = optim.Adam(meta_model.parameters(), meta_lr)
@@ -45,7 +45,7 @@ simclr_accs_src = []
 simclr_accs_tgt = []
 
 max_acc = 0
-
+    
 for i in range(0, n_batch):
 
     # Train COCO

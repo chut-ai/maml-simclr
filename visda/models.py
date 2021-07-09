@@ -5,7 +5,7 @@ from torchvision import models
 
 class DenseNet(nn.Module):
 
-    def __init__(self):
+    def __init__(self, n_class):
         super(DenseNet, self).__init__()
 
         self.layers = nn.Sequential(
@@ -22,7 +22,7 @@ class DenseNet(nn.Module):
             nn.BatchNorm1d(256),
             nn.ReLU()
         )
-        self.classif = nn.Linear(256, 3)
+        self.classif = nn.Linear(256, n_class)
         self.supervision = nn.Linear(256, 32)
 
 
@@ -69,11 +69,11 @@ class ResNet(nn.Module):
 
 class FullNet(nn.Module):
 
-    def __init__(self):
+    def __init__(self, n_class):
         super(FullNet, self).__init__()
 
         self.resnet = ResNet()
-        self.densenet = DenseNet()
+        self.densenet = DenseNet(n_class)
 
     def forward(self, x):
         x = self.resnet(x)

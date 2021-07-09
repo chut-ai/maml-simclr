@@ -6,6 +6,9 @@ from torchvision import transforms
 import torch
 import torch.nn.functional as F
 
+TO_TENSOR = transforms.ToTensor()
+TO_PIL = transforms.ToPILImage()
+
 
 def positive_loss(v1, v2):
     """L2 loss between two tensors.
@@ -33,16 +36,25 @@ def negative_loss(v1, v2, eps):
 
 def rotation():
     rot = 90*np.random.randint(1, 4)
-    transform = transforms.RandomRotation([rot, rot])
+    transform = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.RandomRotation([rot, rot]),
+        transforms.ToTensor()
+        ])
     return transform
 
 
 def flip():
     choice = np.random.randint(0, 2)
     if choice == 0:
-        transform = transforms.RandomVerticalFlip(p=1.)
+        _flip = transforms.RandomVerticalFlip(p=1.)
     else:
-        transform = transforms.RandomHorizontalFlip(p=1.)
+        _flip = transforms.RandomHorizontalFlip(p=1.)
+    transform = transforms.Compose([
+        transforms.ToPILImage(),
+        _flip,
+        transforms.ToTensor()
+        ])
     return transform
 
 
@@ -53,14 +65,21 @@ def cutout():
 
 def crop():
     crop_size = np.random.randint(90, 150)
-    _crop = transforms.CenterCrop(crop_size)
-    resize = transforms.Resize(170)
-    transform = transforms.Compose([_crop, resize])
+    transform = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.CenterCrop(crop_size),
+        transforms.Resize(224),
+        transforms.ToTensor()
+        ])
     return transform
 
 
 def blur():
-    transform = transforms.GaussianBlur(3)
+    transform = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.GaussianBlur(3),
+        transforms.ToTensor()
+        ])
     return transform
 
 
@@ -69,7 +88,8 @@ class GaussianNoise:
         self.std = std
 
     def __call__(self, tensor):
-        noised_tensor = tensor + torch.randn(tensor.size()).cuda() * self.std
+        print(type(tensor))
+        noised_tensor = tensor + torch.randn(tensor.size()).to(tensor.device) * self.std
         return noised_tensor
 
 
@@ -103,11 +123,11 @@ def simclr(x, net, eps):
     tr1, tr2 = transform_dict[tr1_idx], transform_dict[tr2_idx]
     aug_img = tr2(tr1(pos_img))
     # fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
-    # ax1.imshow(pos_img[0], cmap="gray")
+    # ax1.imshow(TO_PIL(pos_img))
     # ax1.set_title("Positive")
-    # ax2.imshow(aug_img[0], cmap="gray")
+    # ax2.imshow(TO_PIL(aug_img))
     # ax2.set_title(tr1.__class__.__name__ + " + " + tr2.__class__.__name__)
-    # ax3.imshow(neg_img[0], cmap="gray", label="Negative")
+    # ax3.imshow(TO_PIL(neg_img), label="Negative")
     # ax3.set_title("Negative")
     # plt.show()
     imgs = torch.stack([pos_img, neg_img, aug_img])

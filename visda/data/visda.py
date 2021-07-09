@@ -13,7 +13,7 @@ from data.utils import squeeze
 DEFAULT_PATH = "/home/louishemadou/data/"
 
 
-def get_all_data(data_root, domains, transform):
+def get_all_data(data_root, domains, transform, n_max):
 
     all_data = {}
 
@@ -24,9 +24,13 @@ def get_all_data(data_root, domains, transform):
             message = "Loading Visda {} images, {}/345".format(domain, i+1)
             print(message, end="\r")
             cls_path = os.path.join(data_path, cls)
-            for img_name in os.listdir(cls_path):
+            img_list = os.listdir(cls_path)
+            random.shuffle(img_list)
+            to_select = min(len(img_list), n_max)
+            for img_name in img_list[:to_select]:
                 img_path = os.path.join(cls_path, img_name)
-                domain_data[int(cls)].append(img_path)
+                img = Image.open(img_path).convert("RGB")
+                domain_data[int(cls)].append(img)
         all_data[domain] = domain_data
         print("\nDone !")
 
@@ -36,7 +40,7 @@ def get_all_data(data_root, domains, transform):
 class VisdaTask:
     """Class containing methods to easily create tasks."""
 
-    def __init__(self, n_class, n_qry, n_spt, domains,
+    def __init__(self, n_class, n_qry, n_spt, domains, n_max,
                  root, n_train_class=200, train_class=None):
 
         self.n_qry = n_qry
@@ -51,7 +55,7 @@ class VisdaTask:
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
 
-        self.data = get_all_data(data_root, domains, self.transform)
+        self.data = get_all_data(data_root, domains, self.transform, n_max)
 
         if train_class is not None:
             self.train_class = train_class
@@ -63,7 +67,7 @@ class VisdaTask:
             x for x in self.classes if x not in self.train_class]
 
     def task(self, mode, source, target):
-    
+
         if mode == "train":
             task_classes = self.train_class
         elif mode == "test":
@@ -73,7 +77,7 @@ class VisdaTask:
 
         chosen_classes = list(np.random.choice(
             task_classes, self.n_class, False))
-        
+
         spt_instances = self.data[source]
         qry_instances = self.data[target]
 
@@ -86,16 +90,14 @@ class VisdaTask:
             spt_indexes = np.random.choice(spt_n_img, self.n_spt, False)
             random.shuffle(spt_indexes)
             for spt_index in spt_indexes:
-                spt_instance = Image.open(spt_cls_instances[spt_index])
-                spt_instance = self.transform(spt_instance)
+                spt_instance = self.transform(spt_cls_instances[spt_index])
                 spt_data.append([spt_instance, cls])
             qry_cls_instances = qry_instances[cls]
             qry_n_img = len(qry_cls_instances)
             qry_indexes = np.random.choice(qry_n_img, self.n_qry, False)
             random.shuffle(qry_indexes)
             for qry_index in qry_indexes:
-                qry_instance = Image.open(qry_cls_instances[qry_index])
-                qry_instance = self.transform(qry_instance)
+                qry_instance = self.transform(qry_cls_instances[qry_index])
                 qry_data.append([qry_instance, cls])
         random.shuffle(spt_data)
         random.shuffle(qry_data)
